@@ -191,4 +191,260 @@ class FirmaController extends BaseController
             ->setContentType('application/json')
             ->setJSON(json_encode(array("msg" => $msg, "data" => $data)));
     }
+    
+    public function solicitarFirma():ResponseInterface
+    {
+        $request = json_decode($this->request->getBody());
+
+        // Verificamos si el cliente ha iniciado sessión
+        if(!session()->has('isLoggedIn')) {
+            return $this->errorResponse("Debe iniciar sesión para poder enviar el correo", 400);
+        }
+
+        // Verificamos si el cliente envió el código del empleado
+        if(!isset($request->codigo)) {
+            return $this->errorResponse("Se necesita el código del colaborador", 500);
+        }
+
+        try{
+            # Obtenemos el código de EVOLUTION
+            $cod_infor = $this->firmaModel->getCodigoEmpleado($request->codigo);
+
+            # Obtenemos los datos del colaborador
+            $data = $this->empleadoModel->getEmpleadoData($cod_infor);
+
+            # Obtenemos los datos del solicitante
+            $solicitante = $this->userModel->getUserData(session()->get('usuario'));
+
+            #Obtenemos los datos adicionales para la firma
+            $correo = $this->firmaModel->getCorreo($request->codigo);
+            $extension = $this->firmaModel->getExtension($request->codigo);
+
+            $mail = new Mail();
+
+            $msg = '
+            <div style="background:#dcdcdc;height:100%">
+                <div style="background: #dcdcdc;height: 100%;display: block;padding-top: 4%;padding-bottom: 4%">
+                    <div style="width:575px;margin:0 auto;border-radius: 8px;overflow: hidden">
+                        <div style="background: #fff;font-size: 35px;text-align: center;margin-bottom: 0;font-weight: 300;padding-top: 40px">
+                            <img 
+                                alt="" 
+                                height="" 
+                                src="https://boschecuador.com/dist/img/logo-tecnova-new.png" 
+                                width="173" 
+                                style="vertical-align:middle;border: 0" 
+                            >
+                        </div>
+                        <div style="background:#fff;padding:40px;padding-top:1px;border-top:0;color:#242424">
+                            <h4 style="font-family:Arial;color:#003399!important;font-size:18px;font-weight:normal">
+                                Estimado,
+                                <br>
+                                <a
+                                    href="#m_-6942895880420619638_" 
+                                    style="color:#003399;text-decoration-line:none"
+                                >
+                                    Equipo de Dise&ntilde;o
+                                </a>
+                            </h4>
+                            <div style="font-family:Arial;color:#3f3f47;line-height:24px;font-size:14px; text-align:justify">
+                                Espero que se encuentren bien. A trav&eacute;s de este correo, les solicitamos amablemente su 
+                                colaboraci&oacute;n para dise&ntilde;ar una firma digital para uno de nuestros colaboradores.
+                            </div>
+                            <br>
+                            <div>
+                                <h3 style="font-family:Arial;color:#003399!important;line-height: 24px;font-size: 16px;text-align: justify">Detalles de la firma:</h3>
+                            </div>
+                            <table style="border-collapse:collapse;border:1px solid #000000;width: 100%">
+                                    <tr style="background-color: #f2f2f2;border:2px solid ">
+                                        <th style="text-align:left;padding:8px;background-color:#003b6a!important;color:white;border:2px solid #000000;font-family:Arial;line-height: 24px;font-size: 14px">Nombre:</th>
+                                        <td style="text-align: left;padding: 12px;font-family: Arial;color: #3f3f47!important;line-height: 24px;font-size: 14px">
+                                            ' .ucwords(mb_strtolower(utf8_encode(implode(" ", [$data["nombre"], $data["apellido"]])))).'
+                                        </td>
+                                    </tr>
+                                    <tr style="background-color: #f2f2f2;border:2px solid">
+                                        <th style="text-align:left;padding:8px;background-color:#003b6a!important;color:white;border:2px solid #000000;font-family:Arial;line-height:24px;font-size:14px">Empresa:</th>
+                                        <td style="text-align: left;padding: 12px;font-family: Arial;color: #3f3f47!important;line-height: 24px;font-size: 14px">
+                                            '.ucwords(strtolower($data["empresa"])).'
+                                        </td>
+                                    </tr>
+                                    <tr style="background-color: #f2f2f2;border:2px solid">
+                                        <th style="text-align:left;padding:8px;background-color:#003b6a!important;color:white;border:2px solid #000000;;font-family:Arial;line-height:24px;font-size:14px">Ubicaci&oacute;n F&iacute;sica:</th>
+                                        <td style="text-align: left;padding: 12px;font-family: Arial;color: #3f3f47!important;line-height: 24px;font-size: 14px">
+                                            '.ucwords(mb_strtolower(utf8_encode($data["localidad"]))).'
+                                        </td>
+                                    </tr>
+                                    <tr style="background-color: #f2f2f2;border:2px solid">
+                                        <th style="text-align:left;padding:8px;background-color:#003b6a!important;color:white;border:2px solid #000000;;font-family:Arial;line-height:24px;font-size:14px">Departamento:</th>
+                                        <td style="text-align: left;padding: 12px;font-family: Arial;color: #3f3f47!important;line-height: 24px;font-size: 14px">
+                                            '.ucwords(mb_strtolower(utf8_encode($data["dpto"]))).'
+                                        </td>
+                                    </tr>
+                                    <tr style="background-color: #f2f2f2;border:2px solid">
+                                        <th style="text-align:left;padding:8px;background-color:#003b6a!important;color:white;border:2px solid #000000;;font-family:Arial;line-height:24px;font-size:14px">Cargo:</th>
+                                        <td style="text-align: left;padding: 12px;font-family: Arial;color: #3f3f47!important;line-height: 24px;font-size: 14px">
+                                            '.ucwords(mb_strtolower(utf8_encode($data["cargo"]))).'
+                                        </td>
+                                    </tr>
+                                    <tr style="background-color: #f2f2f2;border:2px solid">
+                                        <th style="text-align:left;padding:8px;background-color:#003b6a!important;color:white;border:2px solid #000000;;font-family:Arial;line-height:24px;font-size:14px">Extensi&oacute;n:</th>
+                                        <td style="text-align: left;padding: 12px;font-family: Arial;color: #3f3f47!important;line-height: 24px;font-size: 14px">
+                                            '.$extension.'
+                                        </td>
+                                    </tr>
+                                    <tr style="background-color: #f2f2f2;border:2px solid">
+                                        <th style="text-align:left;padding:8px;background-color:#003b6a!important;color:white;border:2px solid #000000;;font-family:Arial;line-height:24px;font-size:14px">Correo:</th>
+                                        <td style="text-align: left;padding: 12px;font-family: Arial;color: #3f3f47!important;line-height: 24px;font-size: 14px">
+                                            <a
+                                                href="#m_-6942895880420619638_" 
+                                                style="color:#3f3f47;text-decoration-line:none"
+                                            >
+                                                '.strtolower($correo).'
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            <div>&nbsp;</div>
+                            <div style="font-family:Arial;color:#3f3f47;line-height:24px;font-size:14px; text-align:justify">
+                                En caso de necesitar informaci&oacute;n adicional o tengan alguna duda, por favor comunicarse directamente con el colaborador
+                                <b>'.ucwords($solicitante["nombre"]).'</b> a trav&eacute;s de la siguiente direcci&oacute;n de correo electr&oacute;nico:
+                                <a  href="mailto:'.strtolower($solicitante["correo"]).'" 
+                                    style="text-decoration-line:none;color:#003b6a" 
+                                    target="_blank">
+                                    <b>
+                                        '.strtolower($solicitante["correo"]).'
+                                    </b>
+                                </a>
+                            </div>
+                            <br>
+                            <div style="font-family:Arial;color:#3f3f47;line-height:24px;font-size:14px; text-align:justify">
+                                Si recibiste este correo por error, puedes ignorarlo. Si encuentras inconvenientes no dudes en enviar un correo a 
+                                <a  href="mailto:aplicaciones@grupoberlin.com" 
+                                    style="text-decoration-line:none;color:#003b6a" 
+                                    target="_blank">
+                                    <b>
+                                        aplicaciones@grupoberlin.com
+                                    </b>
+                                </a>
+                            </div>
+                            <div>&nbsp;</div>
+                            <div>&nbsp;</div>
+                            <div>&nbsp;</div>
+                            <div style="font-family:Arial;color:#3f3f47;line-height:24px;font-size:14px">
+                                Departamento de Sistemas 
+                                <br>
+                                Tecnova S.A.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            ';
+
+            $status_code = $mail->sendMail("andres.valcarcel@grupoberlin.com, andres.jimenez@grupoberlin.com", $msg, 'Solicitud de Diseño de Firma Digital para Colaborador', true)?200:500;
+            $body = $status_code == 200?'Correo enviado de manera exitosa al colaborador':'Error al enviar el correo al colaborador';
+
+            return $this->response
+                ->setStatusCode($status_code)
+                ->setContentType('application/json')
+                ->setBody(json_encode(array('isSuccess'=>$status_code == 200,'msg'=>$body)));
+        } catch (Exception $e) {
+            return $this->errorResponse($e->getMessage(), 400);
+        }
+    }
+
+    private function notificacionRRHH (int $type, string $old_data, string $new_data, string $col_name): void
+    {
+        try {
+            # Obtenemos los datos del solicitante
+            $solicitante = $this->userModel->getUserData(session()->get('usuario'));
+
+            if ($type == 1) {
+                $body = "Hemos recibido una notificaci&oacute;n de actualizaci&oacute;n de la l&iacute;nea de extensi&oacute;n telef&oacute;nica para un colaborador por parte de 
+                     <b>".ucwords(strtolower($solicitante["nombre"]))."</b>.  
+                     La actualizaci&oacute;n se realiz&oacute; para el colaborador <b>".ucwords(mb_strtolower(utf8_encode($col_name)))."</b>, quien antes ten&iacute;a la extensi&oacute;n 
+                     <b>".strlen($old_data) == 0?'(Sin registro)':$old_data."</b> y el presente d&iacute;a le fue asignada la extensi&oacute;n <b>".$new_data."</b>.";
+                $subject = "Actualización de extensión de línea telefónica para el colaborador ".ucwords(mb_strtolower(utf8_encode($col_name)));
+            } else if ($type == 2) {
+                $body = "Hemos recibido una notificaci&oacute;n de actualizaci&oacute;n de la direcci&oacute;n de correo electr&oacute;nico para un colaborador por parte de 
+                     <b>".ucwords(strtolower($solicitante["nombre"]))."</b>.  
+                     La actualizaci&oacute;n se realiz&oacute; para el colaborador <b>".ucwords(mb_strtolower(utf8_encode($col_name)))."</b>, quien antes ten&iacute;a la direcci&oacute;n de correo 
+                     <b>".$old_data."</b> y el presente d&iacute;a le fue asignada la direcci&oacute;n de correo <b>".$new_data."</b>.";
+                $subject = "Actualización de dirección de correo electrónico para el colaborador ".ucwords(mb_strtolower(utf8_encode($col_name)));
+            } else {
+                return;
+            }
+
+            $mail = new Mail();
+
+            $msg = '
+                <div style="background:#dcdcdc;height:100%">
+                    <div style="background: #dcdcdc;height: 100%;display: block;padding-top: 4%;padding-bottom: 4%">
+                        <div style="width:575px;margin:0 auto;border-radius: 8px;overflow: hidden">
+                            <div style="background: #fff;font-size: 35px;text-align: center;margin-bottom: 0;font-weight: 300;padding-top: 40px">
+                                <img 
+                                    alt="" 
+                                    height="" 
+                                    src="https://webapps.boschecuador.com/firmas/public/images/logo-tecnova-new.png" 
+                                    width="173" 
+                                    style="vertical-align:middle;border: 0" 
+                                >
+                            </div>
+                            <div style="background:#fff;padding:40px;padding-top:1px;border-top:0;color:#242424">
+                                <h4 style="font-family:Arial;color:#003399!important;font-size:18px;font-weight:normal">
+                                    Estimado,
+                                    <br>
+                                    <a
+                                        href="#m_-6942895880420619638_" 
+                                        style="color:#003399;text-decoration-line:none"
+                                    >
+                                        Equipo de Recursos Humanos
+                                    </a>
+                                </h4>
+                                <div style="font-family:Arial;color:#3f3f47;line-height:24px;font-size:14px; text-align:justify">
+                                    '.$body.'
+                                </div>
+                                <br>
+                                <div>&nbsp;</div>
+                                <div style="font-family:Arial;color:#3f3f47;line-height:24px;font-size:14px; text-align:justify">
+                                    En caso de necesitar información adicional o tengan alguna duda, por favor comunicarse directamente con el colaborador
+                                    <b>'.ucwords($solicitante["nombre"]).'</b> a través de la siguiente dirección de correo electrónico:
+                                    <a  href="mailto:'.strtolower($solicitante["correo"]).'" 
+                                        style="text-decoration-line:none;color:#003b6a" 
+                                        target="_blank">
+                                        <b>
+                                            '.strtolower($solicitante["correo"]).'
+                                        </b>
+                                    </a>
+                                </div>
+                                <br>
+                                <div style="font-family:Arial;color:#3f3f47;line-height:24px;font-size:14px; text-align:justify">
+                                    Si recibiste este correo por error, puedes ignorarlo. Si encuentras inconvenientes no dudes en enviar un correo a 
+                                    <a  href="mailto:aplicaciones@grupoberlin.com" 
+                                        style="text-decoration-line:none;color:#003b6a" 
+                                        target="_blank">
+                                        <b>
+                                            aplicaciones@grupoberlin.com
+                                        </b>
+                                    </a>
+                                </div>
+                                <div>&nbsp;</div>
+                                <div>&nbsp;</div>
+                                <div>&nbsp;</div>
+                                <div style="font-family:Arial;color:#3f3f47;line-height:24px;font-size:14px">
+                                    Departamento de Sistemas 
+                                    <br>
+                                    Tecnova S.A.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ';
+
+            $mail->sendMail("mary.bajana@grupoberlin.com, diana.alcivar@grupoberlin.com", $msg, $subject);
+            return;
+        } catch (Exception $e) {
+            return;
+        }
+    }
 }

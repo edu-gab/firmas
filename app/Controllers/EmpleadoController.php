@@ -60,7 +60,7 @@ class EmpleadoController extends BaseController
                 $empleado['tiene_firma'] = $firma['tiene_firma'];
                 $empleado['archivo'] = $firma['archivo'];
 
-                /Caso trabajadores registrados para INMOHANSA/
+                /*Caso trabajadores registrados para INMOHANSA*/
                 if(!in_array($empleado['codigo'], [545, 546, 547, 548, 549])) {
                     unset($empleado['correo'], $empleado['cod_emp']);
 
@@ -118,11 +118,11 @@ class EmpleadoController extends BaseController
         $empleado = $this->empleadoModel->getEmpleadoData($codigo_empleado);
         $firma = $this->firmaModel->getFirmaData($codigo_firma);
 
-        /Obtenemos la empresa y la localidad para devolver la ruta del archivo/
+        /*Oabtenemos la empresa y la localidad para devolver la ruta del archivo*/
         $empresa = $firma['empresa'];
         $localidad = $firma['localidad'];
 
-        /Estructuramos la respuesta al cliente/
+        /*Estructuramos la respuesta al cliente*/
         $empleado['codigo'] = $firma['codigo'];
         $empleado['apellido'] = utf8_encode($empleado['apellido']);
         $empleado['nombre'] = utf8_encode($empleado['nombre']);
@@ -141,5 +141,73 @@ class EmpleadoController extends BaseController
         return $empleado;
     }
 
-    
+    /**
+     * Permite enviar un mail con la información para que el colaborador configure su firma digital
+     * dentro del correo empresarial
+     * @return ResponseInterface JSON
+     * @throws Exception
+     */
+    public function sendMail():ResponseInterface
+    {
+        $request = json_decode($this->request->getBody());
+        $codigo_firma = $request->codigo;
+
+        # Obtenemos el código de EVOLUTION
+        $cod_infor = $this->firmaModel->getCodigoEmpleado($codigo_firma);
+
+        # Obtenemos el correo del colaborador
+        $data = $this->empleadoModel->getCorreoData($cod_infor);
+
+        # Obtenemos la URL de la firma del colaborador
+        $firma_url = $this->firmaModel->getURLFirma($codigo_firma);
+
+        $mail = new Mail();
+        $col_name = $data['colaborador'];
+
+        // Definimos la estructura del mensaje
+        $msg= "
+        <HTML lang='es'>
+            <body> 
+                <p style='font-size: 14px;'> <b>Estimado(a),</b></p>
+                <p style='font-size: 14px;'> <b>$col_name</b></p>
+                <p style='font-size: 14px;'> El siguiente instructivo le permitir&aacute; configurar su firma de correo electr&oacute;nico, para lo cual se adjunta el enlace a su <a href='$firma_url'>firma</a> para que pueda realizar la respectiva configuraci&oacute;n.</p>
+                <br>
+                <h2 style='margin-bottom: 10px'>Pasos para la configuraci&oacute;n:</h2>
+                
+                <p style='font-size: 14px;'><b>1.-</b> Copiar el enlace de su firma de correo.</p>
+                <br>
+                <p style='font-size: 14px;'><b>2.-</b> Dirigirse a <b>Gmail</b>.</p>
+                <br>
+                <p style='font-size: 14px;'><b>3.-</b> Dar clic en el &iacute;cono de <b style='color:blue'>Configuraci&oacute;n</b> <img src='https://webapps.boschecuador.com/firmas/public/images/instructivo/config.png' alt='configuracion icono' width='16' height='16' style='margin-bottom:-5px'> <img src='https://webapps.boschecuador.com/firmas/public/images/instructivo/arrow.png' alt='flecha' width='16' height='16' style='margin-bottom:-5px'> <b style='color:blue'>Ver todos los ajustes</b>.</p>
+                <img src='https://webapps.boschecuador.com/firmas/public/images/instructivo/paso3.png' alt='Paso3'>
+                <br>
+                <br>
+                <p style='font-size: 14px;'><b>4.-</b> En la opci&oacute;n <b style='color:blue'>Firma</b>, dar clic en el icono de <b style='color:blue'>Insertar Imagen</b>.</p>
+                <img src='https://webapps.boschecuador.com/firmas/public/images/instructivo/paso4.png' alt='Paso4'>
+                <br>
+                <br>
+                <p style='font-size: 14px;'><b>5.-</b> Se muestra la pantalla de <b style='color:blue'>A&ntilde;adir una imagen</b>, en donde debe pegar el enlace copiado del <b style='text-decoration: underline'>paso 1</b> y dar clic en <b style='color:blue'>Aceptar</b>.</p>
+                <img src='https://webapps.boschecuador.com/firmas/public/images/instructivo/paso5.png' alt='Paso5'>
+                <br>
+                <br>
+                <p style='font-size: 14px;'><b>6.-</b> Confirmar que este habilitada la opción <b style='text-decoration: underline'>Insertar esta firma antes del texto citado en las respuestas</b> y luego damos clic en <b style='color:blue'>Guardar Cambios</b>.</p>
+                <img src='https://webapps.boschecuador.com/firmas/public/images/instructivo/paso6.png' alt='Paso5'>
+                <br>
+                <br>
+                <p style='font-size: 14px;'>Atentamente,</p>
+                <p style='font-size: 14px;'>Departamento de sistemas.</p>
+                <br>
+                <img src='https://webapps.boschecuador.com/firmas/public/images/instructivo/firma_correo.png' alt='Firma'>
+            </body>
+        </HTML>
+        ";
+
+        $status_code = $mail->sendMail($data['correo'], $msg, 'CONFIGURACIÓN DE FIRMA DIGITAL PARA COLABORADORES (GRUPO BERLIN)')?200:500;
+        $body = $status_code == 200?'Correo enviado de manera exitosa al colaborador':'Error al enviar el correo al colaborador';
+
+        return $this->response
+            ->setStatusCode($status_code)
+            ->setContentType('application/json')
+            ->setBody(json_encode(array('isSuccess'=>$status_code == 200,'msg'=>$body)));
+    }
 }
