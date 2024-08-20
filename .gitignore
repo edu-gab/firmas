@@ -1,0 +1,8 @@
+.env
+
+.idea
+.vscode
+
+writable/logs
+writable/session
+writable/cache
