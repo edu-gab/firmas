@@ -209,3 +209,155 @@ function successAlert(response = null, isHTML = false) {
     });
   }
 }
+
+function cleanModal() {
+  $("#firmaModal #nombre").val();
+  $("#firmaModal #empresa").val();
+  $("#firmaModal #localidad").val();
+  $("#firmaModal #departamento").val();
+  $("#firmaModal #cargo").val();
+  $("#firmaModal #nom_archivo").val("");
+  $("#firmaModal #correo").val("");
+  $("#firmaModal #ext").val("");
+  $("#firmaModal #firmaImage").attr(
+    "src",
+    https://res.cloudinary.com/dtutqsucw/image/upload/v1438955603/file-upload-01.png
+  );
+  $("#firmaModal #image").val(null).addClass("visually-hidden");
+  $("#firmaModal #fileUpload").removeClass("visually-hidden");
+  $("#firmaModal #actualizar_firma").removeClass("visually-hidden");
+}
+
+/**
+ * Sends a configuration email to a collaborator.
+ *
+ * @param {string} codigo - The code of the collaborator.
+ * @returns {Promise<void>} - A promise that resolves when the email is sent successfully.
+ */
+async function enviarCorreo(codigo) {
+  Swal.fire({
+    title:
+      "¿Está seguro de enviar el correo de configuración para este colaborador?",
+    text: "Esta acción no se podrá revertir.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Si, enviar",
+    cancelButtonText: "No, cancelar",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      $("#loadingModal").modal("show");
+      $("#modal-msg").text("Enviando correo");
+      await fetch(${base_url}/empleado/sendMail, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ codigo: codigo }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+          return response.json();
+        })
+        .then((data) => {
+          successAlert(data.msg);
+        })
+        .catch((error) => {
+          if (error.msg !== undefined) {
+            errorAlert(error.msg);
+          } else {
+            errorAlert(error);
+          }
+        })
+        .finally(() => {
+          $("#loadingModal").modal("hide");
+          $("#loadingModal #modal-msg").text("Espere un momento");
+        });
+    }
+  });
+}
+
+/**
+ * Fills the modal with employee information.
+ *
+ * @param {Object} empleado - The employee object.
+ * @param {string} empleado.codigo - The employee code.
+ * @param {string} empleado.apellido - The employee last name.
+ * @param {string} empleado.nombre - The employee first name.
+ * @param {string} empleado.empresa - The employee company.
+ * @param {string} empleado.localidad - The employee location.
+ * @param {string} empleado.dpto - The employee department.
+ * @param {string} empleado.cargo - The employee position.
+ * @param {string} empleado.tiene_firma - Indicates if the employee has a signature (1 for true, 0 for false).
+ * @param {string} empleado.archivo - The employee signature file path.
+ * @param {string} empleado.extension - The employee signature file extension.
+ * @param {string} empleado.correo - The employee email address.
+ * @returns {void}
+ */
+async function fillModal(empleado) {
+  $("#firmaModal #codigo").val(empleado.codigo);
+  $("#firmaModal #nombre").val(${empleado.apellido} ${empleado.nombre});
+  $("#firmaModal #empresa").val(empleado.empresa);
+  $("#firmaModal #localidad").val(empleado.localidad);
+  $("#firmaModal #departamento").val(empleado.dpto);
+  $("#firmaModal #cargo").val(empleado.cargo);
+
+  /Verificamos si el empleado tiene firma/
+  let nom_archivo;
+  if (empleado.tiene_firma === "1") {
+    /Verificamos si muestra la imagen/
+    if ($("#firmaModal #image").hasClass("visually-hidden")) {
+      $("#firmaModal #image").removeClass("visually-hidden");
+    }
+
+    /Verificamos si oculta el input para subir archivos/
+    if (!$("#firmaModal #fileUpload").hasClass("visually-hidden")) {
+      $("#firmaModal #fileUpload").addClass("visually-hidden");
+    }
+
+    $("#firmaModal #firmaImage").attr(
+      "src",
+      https://webapps.boschecuador.com/firmas/${empleado.archivo}
+    );
+    nom_archivo = empleado.archivo.slice(1, -4).split("/");
+    $("#firmaModal #nom_archivo").val(nom_archivo[1] + ".jpg");
+  }
+
+  /Verificamos si tiene extensión/
+  if (empleado.extension !== null || empleado.extension !== "") {
+    $("#firmaModal #ext").val(empleado.extension);
+  } else {
+    $("#firmaModal #ext").val("No tiene");
+  }
+
+  /Verificamos si tiene correo/
+  if (empleado.correo !== null || empleado.correo !== "") {
+    $("#firmaModal #correo").val(empleado.correo);
+  } else {
+    $("#firmaModal #correo").val("No tiene");
+  }
+}
+
+function getURL(link) {
+  let aux = document.createElement("input");
+  aux.setAttribute("value", https://webapps.boschecuador.com/firmas/${link});
+  document.body.appendChild(aux);
+  aux.select();
+  document.execCommand("copy");
+  document.body.removeChild(aux);
+  let css = document.createElement("style");
+  let estilo = document.createTextNode(
+    "#aviso {position:fixed; z-index: 9999999; top: 80%;left:50%;margin-left: -70px;padding: 20px; background: #C7C5C5;border-radius: 8px;font-family: sans-serif;opacity:0.75;}"
+  );
+  css.appendChild(estilo);
+  document.head.appendChild(css);
+  let aviso = document.createElement("div");
+  aviso.setAttribute("id", "aviso");
+  let contenido = document.createTextNode("URL copiada");
+  aviso.appendChild(contenido);
+  document.body.appendChild(aviso);
+  window.load = setTimeout("document.body.removeChild(aviso)", 2000);
+}
