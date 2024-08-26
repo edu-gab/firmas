@@ -1,6 +1,6 @@
 $(document).ready(async function () {
   $("#loadingModal").modal("show");
-  await fetch(${base_url}/firma/verificarColaboradoresNuevos)
+  await fetch(`${base_url}/firma/verificarColaboradoresNuevos`)
     .then((response) => response.json())
     .then((response) => inicialAlert(response))
     .catch((error) => inicialAlert(error))
@@ -20,7 +20,7 @@ $(document).ready(async function () {
       url: "//cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json",
     },
     ajax: {
-      url: ${base_url}/empleado/getAll,
+      url: `${base_url}/empleado/getAll`,
       data: "data",
       type: "POST",
     },
@@ -37,7 +37,7 @@ $(document).ready(async function () {
       {
         data: null,
         render: function (data, type, row) {
-          return ${data.apellido} ${data.nombre};
+          return `${data.apellido} ${data.nombre}`;
         },
       },
       { data: "empresa" },
@@ -128,7 +128,7 @@ $(document).ready(async function () {
 });
 
 async function getEmpleadoData(codigo) {
-  await fetch(${base_url}/empleado/getData, {
+  await fetch(`${base_url}/empleado/getData`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -139,7 +139,6 @@ async function getEmpleadoData(codigo) {
     .then(async (response) => await fillModal(response))
     .catch((error) => errorAlert(error));
 }
-
 async function onFormSubmit(e) {
   e.preventDefault();
   e.stopPropagation();
@@ -363,7 +362,7 @@ function cleanModal() {
   $("#firmaModal #ext").val("");
   $("#firmaModal #firmaImage").attr(
     "src",
-    https://res.cloudinary.com/dtutqsucw/image/upload/v1438955603/file-upload-01.png
+    `https://res.cloudinary.com/dtutqsucw/image/upload/v1438955603/file-upload-01.png`
   );
   $("#firmaModal #image").val(null).addClass("visually-hidden");
   $("#firmaModal #fileUpload").removeClass("visually-hidden");
@@ -391,7 +390,7 @@ async function enviarCorreo(codigo) {
     if (result.isConfirmed) {
       $("#loadingModal").modal("show");
       $("#modal-msg").text("Enviando correo");
-      await fetch(${base_url}/empleado/sendMail, {
+      await fetch(`${base_url}/empleado/sendMail`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -441,7 +440,7 @@ async function enviarCorreo(codigo) {
  */
 async function fillModal(empleado) {
   $("#firmaModal #codigo").val(empleado.codigo);
-  $("#firmaModal #nombre").val(${empleado.apellido} ${empleado.nombre});
+  $("#firmaModal #nombre").val(`${empleado.apellido} ${empleado.nombre}`);
   $("#firmaModal #empresa").val(empleado.empresa);
   $("#firmaModal #localidad").val(empleado.localidad);
   $("#firmaModal #departamento").val(empleado.dpto);
@@ -462,7 +461,7 @@ async function fillModal(empleado) {
 
     $("#firmaModal #firmaImage").attr(
       "src",
-      https://webapps.boschecuador.com/firmas/${empleado.archivo}
+      `https://webapps.boschecuador.com/firmas/${empleado.archivo}`
     );
     nom_archivo = empleado.archivo.slice(1, -4).split("/");
     $("#firmaModal #nom_archivo").val(nom_archivo[1] + ".jpg");
@@ -485,7 +484,7 @@ async function fillModal(empleado) {
 
 function getURL(link) {
   let aux = document.createElement("input");
-  aux.setAttribute("value", https://webapps.boschecuador.com/firmas/${link});
+  aux.setAttribute("value", `https://webapps.boschecuador.com/firmas/${link}`);
   document.body.appendChild(aux);
   aux.select();
   document.execCommand("copy");
