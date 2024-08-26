@@ -1,3 +1,145 @@
+$(document).ready(async function () {
+  $("#loadingModal").modal("show");
+  await fetch(${base_url}/firma/verificarColaboradoresNuevos)
+    .then((response) => response.json())
+    .then((response) => inicialAlert(response))
+    .catch((error) => inicialAlert(error))
+    .finally(() => $("#loadingModal").modal("hide"));
+
+  let table = $("#firmas").DataTable({
+    pageLength: 10,
+    scrollX: true,
+    scrollY: true,
+    searching: true,
+    paging: true,
+    processing: true,
+    serverSide: false,
+    destroy: true,
+    order: [[1, "asc"]],
+    language: {
+      url: "//cdn.datatables.net/plug-ins/1.10.16/i18n/Spanish.json",
+    },
+    ajax: {
+      url: ${base_url}/empleado/getAll,
+      data: "data",
+      type: "POST",
+    },
+    columns: [
+      {
+        data: null,
+        render: function (data, type, row) {
+          return `<td>
+                                <input type="hidden" name="empleado" id="" value="${data.codigo}" class="form-check-input"/>
+                            </td>`;
+        },
+        orderable: false,
+      },
+      {
+        data: null,
+        render: function (data, type, row) {
+          return ${data.apellido} ${data.nombre};
+        },
+      },
+      { data: "empresa" },
+      { data: "dpto" },
+      { data: "cargo" },
+      { data: "localidad" },
+      { data: "extension" },
+      {
+        data: "tiene_firma",
+        render: function (data, type, row) {
+          if (type === "display") {
+            return `<td><img data-search="${
+              data === "1" ? "con firma" : "sin firma"
+            }" src="${base_url}/public/images/icons/${
+              data === "1" ? "valido" : "invalido"
+            }.png" alt="Asignado" width="24" height="24"></td>`;
+          } else if (type === "filter") {
+            return data === "1" ? "con firma" : "sin firma";
+          }
+          return `<td><img data-search="${
+            data === "1" ? "con firma" : "sin firma"
+          }" src="${base_url}/public/images/icons/${
+            data === "1" ? "valido" : "invalido"
+          }.png" alt="Asignado" width="24" height="24"></td>`;
+        },
+
+        orderable: true,
+      },
+      {
+        data: null,
+        render: function (data, type, row) {
+          return <td><img class="my-btn" src="${base_url}/public/images/icons/exterior.png" onclick="showModal(${data.codigo})" alt="OpenModal"/></td>;
+        },
+        orderable: false,
+      },
+      {
+        data: null,
+        render: function (data, type, row) {
+          funcion = onclick="getURL('${data.archivo}')";
+          return `<td><img class="${
+            data.tiene_firma === "1" ? "my-btn" : "btn-disabled"
+          }" src="${base_url}/public/images/icons/enlace.png" ${
+            data.tiene_firma === "1" ? funcion : ""
+          } alt="FirmaLink"/></td>`;
+        },
+        orderable: false,
+      },
+      {
+        data: null,
+        render: function (data, type, row) {
+          funcion = onclick="enviarCorreo('${data.codigo}')";
+          return `<td><img class="${
+            data.tiene_firma === "1" ? "my-btn" : "btn-disabled"
+          }" src="${base_url}/public/images/icons/email.png" ${
+            data.tiene_firma === "1" ? funcion : ""
+          } alt="FirmaEnvio"/></td>`;
+        },
+        orderable: false,
+      },
+      {
+        data: null,
+        render: function (data, type, row) {
+          return <td><img class="my-btn" src="${base_url}/public/images/icons/digital-signature.png" onclick="solicitarFirma('${data.codigo}')" alt="Solicitar Firma"/></td>;
+        },
+        orderable: false,
+      },
+    ],
+  });
+
+  $("#search_value").on("keyup change", function () {
+    table.search(this.value).draw();
+  });
+
+  $("#clear_btn").on("click", () => {
+    table.search("").draw();
+  });
+
+  setTimeout(() => {
+    $("#firmas_filter").html("");
+    $("#search_value").attr("placeholder", "Buscar empleado");
+    $("#firmas_info, #firmas_length, #firmas_paginate, .pagination").addClass(
+      "fuente"
+    );
+  }, 400);
+
+  // Implementación de Ronny
+  $("#opcionForm").on("submit", onFormSubmit(e));
+});
+
+async function getEmpleadoData(codigo) {
+  await fetch(${base_url}/empleado/getData, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ codigo: codigo }),
+  })
+    .then((response) => response.json())
+    .then(async (response) => await fillModal(response))
+    .catch((error) => errorAlert(error));
+}
+
 async function onFormSubmit(e) {
   e.preventDefault();
   e.stopPropagation();
